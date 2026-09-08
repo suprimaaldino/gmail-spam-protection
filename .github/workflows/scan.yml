@@ -1,0 +1,18 @@
+name: Gmail Phish Scan
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install imaplib2 2>/dev/null || true
+      - run: python hermes_phish_detect.py "$GMAIL_USER" "$GMAIL_APP_PASS"
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
