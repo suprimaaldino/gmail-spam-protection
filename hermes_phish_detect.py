@@ -4,8 +4,8 @@ import imaplib, email, re, sys
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-GMAIL_USER = sys.argv[1] if len(sys.argv) > 1 else input("Gmail address: ").strip()
-GMAIL_APP_PASS = sys.argv[2] if len(sys.argv) > 2 else ""
+GMAIL_USER = sys.argv[1] if len(sys.argv) > 1 else "suprimaaldino@gmail.com"
+GMAIL_APP_PASS = sys.argv[2] if len(sys.argv) > 2 else "eyasvqmuepfqtdne"
 MAX_EMAILS = 20
 SCAN_HOURS = 48
 
@@ -117,12 +117,9 @@ def fetch_recent(mail):
         frm = ''.join(p.decode(enc or 'utf-8') if isinstance(p, bytes) else p for p, enc in from_parts)
         try:
             msg_date = email.utils.parsedate_to_datetime(msg.get('Date', ''))
-            if msg_date.tzinfo is None:
-                msg_date = msg_date.replace(tzinfo=timezone.utc)
-            else:
-                msg_date = msg_date.astimezone(timezone.utc)
-        except Exception:
-            msg_date = cutoff
+            if msg_date.tzinfo is None: msg_date = msg_date.replace(tzinfo=timezone.utc)
+            else: msg_date = msg_date.astimezone(timezone.utc)
+        except Exception: msg_date = cutoff
         if msg_date < cutoff: continue
         body = ''
         body_text = ''
@@ -148,7 +145,7 @@ def fetch_recent(mail):
     return messages
 
 def main():
-    app_pass = GMAIL_APP_PASS or __import__("getpass").getpass("App Password: ").strip()
+    app_pass = GMAIL_APP_PASS
     print(f"[*] Connecting to Gmail IMAP for {GMAIL_USER} ...")
     mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
     try:
