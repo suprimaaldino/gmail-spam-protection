@@ -4,9 +4,10 @@ import imaplib, email, re, sys, time, os, urllib.request, json
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-# Telegram notification (optional)
+# Telegram notification (optional) — SUCCESS ONLY, no fail notifications
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "5100924103")
+TG_NOTIFY_ON_SUCCESS = os.environ.get("TG_NOTIFY_ON_SUCCESS", "1") == "1"  # only notify when scan succeeds
 
 def tg_send(text):
     if not TG_BOT_TOKEN: return
@@ -184,7 +185,7 @@ def scan_account(user, app_pass):
         except Exception as e:
             if attempt == 2:
                 print(f"[!] LOGIN FAILED for {user} after 3 attempts: {e}")
-                return []
+                return None  # return None to indicate failure, not empty list
             print(f"[!] Login attempt {attempt+1} failed, retrying in 5s...")
             time.sleep(5)
     mail.select('INBOX')
@@ -219,24 +220,33 @@ def scan_account(user, app_pass):
 
 def main():
     all_flagged = []
+    scan_failed = False
     for acc in ACCOUNTS:
         try:
-            flagged = scan_account(acc['user'], acc['pass'])
-            all_flagged.extend(flagged)
+            result = scan_account(acc['user'], acc['pass'])
+            if result is None:  # login failed
+                scan_failed = True
+                continue
+            all_flagged.extend(result)
         except Exception as e:
             print(f"[!] Error scanning {acc['user']}: {e}")
+            scan_failed = True
         time.sleep(DELAY_BETWEEN_ACCOUNTS)
     print(f"\n{'=' * 80}")
     print(f"  TOTAL: {len(all_flagged)} phishing email(s) flagged across all accounts.")
     print(f"{'=' * 80}")
-    # Telegram notification
-    if all_flagged:
-        lines = [f"⚠ <b>{len(all_flagged)} phishing email(s) detected</b>"]
-        for m in sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5]:
-            lines.append(f"• [{m['score']}] {m['from']} — {m['subject'][:50]}")
-        tg_send("\n".join(lines))
-    else:
-        tg_send("✅ Gmail scan clean — 0 phishing detected.")
+    # Telegram notification — ONLY on success (scan completed without fatal errors)
+    if scan_failed:
+        print("[!] Scan completed with errors — no Telegram notification (per user preference).")
+        return all_flagged
+    if TG_NOTIFY_ON_SUCCESS:
+        if all_flagged:
+            lines = [f"⚠ <b>{len(all_flagged)} phishing email(s) detected</b>"]
+            for m in sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5]:
+                lines.append(f"• [{m['score']}] {m['from']} — {m['subject'][:50]}")
+            tg_send("\n".join(lines))
+        else:
+            tg_send("✅ Gmail scan clean — 0 phishing detected.")
     return all_flagged
 
 if __name__ == '__main__':
