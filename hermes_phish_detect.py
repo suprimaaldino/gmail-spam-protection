@@ -24,6 +24,7 @@ if not ACCOUNTS:
 MAX_EMAILS = 20
 SCAN_HOURS = 48
 DELAY_BETWEEN_ACCOUNTS = 2
+IMAP_TIMEOUT = 30  # seconds
 
 PHISH_KEYWORDS = [
     r'\b(verify|verification|confirm|confirmation|account\s*suspended|suspended\s*account)\b',
@@ -161,13 +162,17 @@ def fetch_recent(mail):
     return messages
 
 def scan_account(user, app_pass):
-    print(f"\n[*] Scanning {user} ...")
-    mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
-    try:
-        mail.login(user, app_pass)
-    except imaplib.IMAP4.error as e:
-        print(f"[!] LOGIN FAILED for {user}: {e}")
-        return []
+    for attempt in range(3):
+        try:
+            mail = imaplib.IMAP4_SSL('imap.gmail.com', 993, timeout=IMAP_TIMEOUT)
+            mail.login(user, app_pass)
+            break
+        except Exception as e:
+            if attempt == 2:
+                print(f"[!] LOGIN FAILED for {user} after 3 attempts: {e}")
+                return []
+            print(f"[!] Login attempt {attempt+1} failed, retrying in 5s...")
+            time.sleep(5)
     mail.select('INBOX')
     status, data = mail.status('INBOX', '(MESSAGES)')
     total = int(data[0].decode().split('MESSAGES ')[1].split(')')[0]) if data[0] else 0
