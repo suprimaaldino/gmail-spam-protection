@@ -4,8 +4,8 @@ import imaplib, email, re, sys
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-GMAIL_USER = sys.argv[1] if len(sys.argv) > 1 else "suprimaaldino@gmail.com"
-GMAIL_APP_PASS = sys.argv[2] if len(sys.argv) > 2 else "eyasvqmuepfqtdne"
+GMAIL_USER = sys.argv[1] if len(sys.argv) > 1 else "aldinoaja@gmail.com"
+GMAIL_APP_PASS = sys.argv[2] if len(sys.argv) > 2 else "ektyzyupnbdaktrb"
 MAX_EMAILS = 20
 SCAN_HOURS = 48
 
