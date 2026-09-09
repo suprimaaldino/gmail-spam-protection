@@ -1,0 +1,9 @@
+[project]
+name = "gmail-phish-scan"
+version = "1.0.0"
+
+[deploy]
+start_command = "python hermes_phish_detect.py supramaaldino@gmail.com ${GMAIL_APP_PASS}"
+
+[phases.setup]
+python_version = "3.11"
