@@ -1,13 +1,18 @@
 #!/usr/bin/env python3
-"""Gmail Phishing/Spam Detector — IMAP-based"""
-import imaplib, email, re, sys
+"""Gmail Phishing/Spam Detector — IMAP-based (Multi-account)"""
+import imaplib, email, re, sys, time
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-GMAIL_USER = sys.argv[1] if len(sys.argv) > 1 else "aldinoaja@gmail.com"
-GMAIL_APP_PASS = sys.argv[2] if len(sys.argv) > 2 else "ektyzyupnbdaktrb"
+# Accounts to scan (add more as needed)
+ACCOUNTS = [
+    {"user": "aldinoaja@gmail.com", "pass": "ektyzyupnbdaktrb"},
+    {"user": "suprimaaldino@gmail.com", "pass": "eyasvqmuepfqtdne"},
+]
+
 MAX_EMAILS = 20
 SCAN_HOURS = 48
+DELAY_BETWEEN_ACCOUNTS = 2  # seconds between account scans
 
 PHISH_KEYWORDS = [
     r'\b(verify|verification|confirm|confirmation|account\s*suspended|suspended\s*account)\b',
@@ -144,72 +149,57 @@ def fetch_recent(mail):
                          'content_type': content_type, 'body': body[:2000], 'body_text': body_text[:2000]})
     return messages
 
-def main():
-    app_pass = GMAIL_APP_PASS
-    print(f"[*] Connecting to Gmail IMAP for {GMAIL_USER} ...")
+def scan_account(user, app_pass):
+    print(f"\n[*] Scanning {user} ...")
     mail = imaplib.IMAP4_SSL('imap.gmail.com', 993)
     try:
-        mail.login(GMAIL_USER, app_pass)
+        mail.login(user, app_pass)
     except imaplib.IMAP4.error as e:
-        print(f"[!] LOGIN FAILED: {e}")
-        sys.exit(1)
+        print(f"[!] LOGIN FAILED for {user}: {e}")
+        return []
     mail.select('INBOX')
     status, data = mail.status('INBOX', '(MESSAGES)')
     total = int(data[0].decode().split('MESSAGES ')[1].split(')')[0]) if data[0] else 0
     print(f"[*] Inbox: {total} total messages")
     messages = fetch_recent(mail)
     if not messages:
-        print(f"[*] No recent messages (within {SCAN_HOURS}h). Nothing to scan.")
+        print(f"[*] No recent messages for {user}.")
         mail.logout()
-        return
-    print(f"[*] Scanning {len(messages)} recent messages...\n")
-    print("=" * 80)
-    print(f"  PHISHING REPORT — {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print("=" * 80)
+        return []
+    print(f"[*] Scanning {len(messages)} recent messages...")
     flagged = []
     for msg in messages:
         score, indicators = check_phishing(msg)
         msg['score'] = score
         msg['indicators'] = indicators
         if score >= 2: flagged.append(msg)
-    print(f"\n  Total scanned:   {len(messages)}")
-    print(f"  Flagged (>=2):   {len(flagged)}")
-    print(f"  Clean:           {len(messages) - len(flagged)}")
+    print(f"  Flagged: {len(flagged)}/{len(messages)}")
     if flagged:
-        print(f"\n{'─' * 80}")
-        print("  ⚠ FLAGGED EMAILS (potential phishing):")
-        print(f"{'─' * 80}")
         for m in sorted(flagged, key=lambda x: x['score'], reverse=True):
-            print(f"\n  [#] Score: {m['score']}")
-            print(f"      From:    {m['from']}")
-            print(f"      Subject: {m['subject']}")
-            print(f"      Date:    {m['date']}")
-            print(f"      Indicators:")
-            for ind in m['indicators']: print(f"        • {ind}")
-            print()
-    low_score = [m for m in messages if 0 < m['score'] < 2]
-    if low_score:
-        print(f"{'─' * 80}")
-        print("  ⓘ Low-risk notices (score 1):")
-        for m in low_score: print(f"      • {m['from']} — {m['subject']}")
-        print()
-    print("=" * 80)
-    print(f"  Done. {len(flagged)} potential phishing email(s) found.")
-    print("=" * 80)
-    if flagged:
-        try:
-            for m in flagged:
-                mid = m['id']
-                mail.copy(mid, '[Gmail]/Spam')
-                mail.store(mid, '+FLAGS', r'(\Seen)')
-                try: mail.store(mid, '+X-GM-LABELS', r'(\Phishing)')
-                except Exception: pass
-                print(f"      [→ moved to Spam] {m['subject'][:60]}")
-            mail.expunge()
-            print(f"\n  [✓] {len(flagged)} email(s) moved to Spam + labeled Phishing.")
-        except Exception as e: print(f"\n  [!] Move failed: {e}")
+            print(f"  ⚠ [{m['score']}] {m['from']} — {m['subject'][:60]}")
+            for ind in m['indicators']: print(f"      • {ind}")
+            mail.copy(m['id'], '[Gmail]/Spam')
+            mail.store(m['id'], '+FLAGS', r'(\Seen)')
+            try: mail.store(m['id'], '+X-GM-LABELS', r'(\Phishing)')
+            except Exception: pass
+        mail.expunge()
+        print(f"  [✓] {len(flagged)} moved to Spam.")
     mail.logout()
     return flagged
+
+def main():
+    all_flagged = []
+    for acc in ACCOUNTS:
+        try:
+            flagged = scan_account(acc['user'], acc['pass'])
+            all_flagged.extend(flagged)
+        except Exception as e:
+            print(f"[!] Error scanning {acc['user']}: {e}")
+        time.sleep(DELAY_BETWEEN_ACCOUNTS)
+    print(f"\n{'=' * 80}")
+    print(f"  TOTAL: {len(all_flagged)} phishing email(s) flagged across all accounts.")
+    print(f"{'=' * 80}")
+    return all_flagged
 
 if __name__ == '__main__':
     import email.header
