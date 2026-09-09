@@ -1,18 +1,29 @@
 #!/usr/bin/env python3
-"""Gmail Phishing/Spam Detector — IMAP-based (Multi-account)"""
-import imaplib, email, re, sys, time
+"""Gmail Phishing/Spam Detector — IMAP-based (Multi-account via env vars)"""
+import imaplib, email, re, sys, time, os
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-# Accounts to scan (add more as needed)
-ACCOUNTS = [
-    {"user": "aldinoaja@gmail.com", "pass": "ektyzyupnbdaktrb"},
-    {"user": "suprimaaldino@gmail.com", "pass": "eyasvqmuepfqtdne"},
-]
+# Build accounts from env vars (GMAIL_USER_1, GMAIL_PASS_1, etc.)
+ACCOUNTS = []
+i = 1
+while True:
+    user = os.environ.get(f"GMAIL_USER_{i}")
+    pwd = os.environ.get(f"GMAIL_PASS_{i}")
+    if not user or not pwd: break
+    ACCOUNTS.append({"user": user, "pass": pwd})
+    i += 1
+
+# Fallback to argv if env not set
+if not ACCOUNTS:
+    ACCOUNTS.append({
+        "user": sys.argv[1] if len(sys.argv) > 1 else "aldinoaja@gmail.com",
+        "pass": sys.argv[2] if len(sys.argv) > 2 else "",
+    })
 
 MAX_EMAILS = 20
 SCAN_HOURS = 48
-DELAY_BETWEEN_ACCOUNTS = 2  # seconds between account scans
+DELAY_BETWEEN_ACCOUNTS = 2
 
 PHISH_KEYWORDS = [
     r'\b(verify|verification|confirm|confirmation|account\s*suspended|suspended\s*account)\b',
