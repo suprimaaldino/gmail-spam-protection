@@ -1,8 +1,22 @@
 #!/usr/bin/env python3
 """Gmail Phishing/Spam Detector — IMAP-based (Multi-account via env vars)"""
-import imaplib, email, re, sys, time, os
+import imaplib, email, re, sys, time, os, urllib.request, json
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
+
+# Telegram notification (optional)
+TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
+TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
+
+def tg_send(text):
+    if not TG_BOT_TOKEN or not TG_CHAT_ID: return
+    url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
+    data = json.dumps({"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}).encode()
+    req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=10) as r:
+            r.read()
+    except Exception: pass
 
 # Build accounts from env vars (GMAIL_USER_1, GMAIL_PASS_1, etc.)
 ACCOUNTS = []
@@ -24,7 +38,7 @@ if not ACCOUNTS:
 MAX_EMAILS = 20
 SCAN_HOURS = 48
 DELAY_BETWEEN_ACCOUNTS = 2
-IMAP_TIMEOUT = 30  # seconds
+IMAP_TIMEOUT = 30
 
 PHISH_KEYWORDS = [
     r'\b(verify|verification|confirm|confirmation|account\s*suspended|suspended\s*account)\b',
@@ -215,6 +229,14 @@ def main():
     print(f"\n{'=' * 80}")
     print(f"  TOTAL: {len(all_flagged)} phishing email(s) flagged across all accounts.")
     print(f"{'=' * 80}")
+    # Telegram notification
+    if all_flagged:
+        lines = [f"⚠ <b>{len(all_flagged)} phishing email(s) detected</b>"]
+        for m in sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5]:
+            lines.append(f"• [{m['score']}] {m['from']} — {m['subject'][:50]}")
+        tg_send("\n".join(lines))
+    else:
+        tg_send("✅ Gmail scan clean — 0 phishing detected.")
     return all_flagged
 
 if __name__ == '__main__':
