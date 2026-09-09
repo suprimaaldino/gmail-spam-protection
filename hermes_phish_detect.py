@@ -6,10 +6,10 @@ from urllib.parse import urlparse
 
 # Telegram notification (optional)
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
+TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "5100924103")
 
 def tg_send(text):
-    if not TG_BOT_TOKEN or not TG_CHAT_ID: return
+    if not TG_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
     data = json.dumps({"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
