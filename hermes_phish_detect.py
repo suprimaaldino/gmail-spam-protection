@@ -203,7 +203,7 @@ def scan_account(user, app_pass):
         score, indicators = check_phishing(msg)
         msg['score'] = score
         msg['indicators'] = indicators
-        if score >= 2: flagged.append(msg)
+        if score >= 3: flagged.append(msg)
     print(f"  Flagged: {len(flagged)}/{len(messages)}")
     if flagged:
         for m in sorted(flagged, key=lambda x: x['score'], reverse=True):
