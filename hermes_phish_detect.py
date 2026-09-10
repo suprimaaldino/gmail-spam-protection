@@ -239,7 +239,7 @@ def main():
         print("[!] Scan completed with errors — no Telegram notification (per user preference).")
         return all_flagged
     if all_flagged:
-        lines = [f"⚠️ <b>⚠ PHISHING DETECTED</b>", f"📊 Total flagged: {len(all_flagged)}", f"👤 Accounts scanned: {len(ACCOUNTS)}", ""]
+        lines = [f"⚠️ <b>PHISHING DETECTED</b>", f"📊 Total flagged: {len(all_flagged)}", f"👤 Accounts scanned: {len(ACCOUNTS)}", ""]
         for i, m in enumerate(sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5], 1):
             lines.append(f"<b>#{i}</b> [{m['score']}⚠]")
             lines.append(f"📧 From: {m['from']}")
