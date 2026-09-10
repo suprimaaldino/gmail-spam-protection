@@ -9,10 +9,10 @@ TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "5100924103")
 TG_RUN_ON_COMMAND = os.environ.get("TG_RUN_ON_COMMAND", "1") == "1"  # allow /scan via Telegram
 
-def tg_send(text):
+def tg_send(text, chat_id=None):
     if not TG_BOT_TOKEN: return
     url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/sendMessage"
-    data = json.dumps({"chat_id": TG_CHAT_ID, "text": text, "parse_mode": "HTML"}).encode()
+    data = json.dumps({"chat_id": chat_id or TG_CHAT_ID, "text": text, "parse_mode": "HTML"}).encode()
     req = urllib.request.Request(url, data=data, headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(req, timeout=10) as r:
@@ -60,7 +60,7 @@ def handle_telegram_command(command, chat_id):
             lines.append("Automatically moved to Spam.")
             tg_send("\n".join(lines), chat_id)
         else:
-            tg_send("✅ Gmail scan clean — 0 phishing detected.", chat_id)
+            tg_send("✅ Gmail scan clean - 0 phishing detected.", chat_id)
         return True
     return False
 
