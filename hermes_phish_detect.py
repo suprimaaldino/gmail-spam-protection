@@ -7,6 +7,7 @@ from urllib.parse import urlparse
 # Telegram notification (optional) — SUCCESS ONLY, no fail notifications
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
 TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "5100924103")
+TG_RUN_ON_COMMAND = os.environ.get("TG_RUN_ON_COMMAND", "1") == "1"  # allow /scan via Telegram
 
 def tg_send(text):
     if not TG_BOT_TOKEN: return
@@ -17,6 +18,51 @@ def tg_send(text):
         with urllib.request.urlopen(req, timeout=10) as r:
             r.read()
     except Exception: pass
+
+def tg_get_updates(offset=0):
+    """Poll for Telegram commands (for Railway direct Telegram integration)"""
+    if not TG_BOT_TOKEN: return []
+    url = f"https://api.telegram.org/bot{TG_BOT_TOKEN}/getUpdates?offset={offset}&timeout=5"
+    try:
+        with urllib.request.urlopen(url, timeout=10) as r:
+            data = json.loads(r.read().decode())
+            return data.get("result", [])
+    except Exception: return []
+
+def handle_telegram_command(command, chat_id):
+    """Handle /scan command from Telegram"""
+    if command == "scan":
+        tg_send(f"🔄 Starting scan for {len(ACCOUNTS)} account(s)...", chat_id)
+        all_flagged = []
+        scan_failed = False
+        for acc in ACCOUNTS:
+            try:
+                result = scan_account(acc['user'], acc['pass'])
+                if result is None:
+                    scan_failed = True
+                    continue
+                all_flagged.extend(result)
+            except Exception as e:
+                print(f"[!] Error scanning {acc['user']}: {e}")
+                scan_failed = True
+            time.sleep(DELAY_BETWEEN_ACCOUNTS)
+        if scan_failed:
+            tg_send("❌ Scan failed — check credentials/connectivity.", chat_id)
+        elif all_flagged:
+            lines = [f"⚠️ <b>PHISHING DETECTED</b>", f"Total flagged: {len(all_flagged)}", f"Accounts scanned: {len(ACCOUNTS)}", ""]
+            for i, m in enumerate(sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5], 1):
+                lines.append(f"#{i} [{m['score']}⚠]")
+                lines.append(f"From: {m['from']}")
+                lines.append(f"Subject: {m['subject'][:60]}")
+                if m['indicators']:
+                    lines.append(f"Indicators: {', '.join(m['indicators'][:3])}")
+                lines.append("")
+            lines.append("Automatically moved to Spam.")
+            tg_send("\n".join(lines), chat_id)
+        else:
+            tg_send("✅ Gmail scan clean — 0 phishing detected.", chat_id)
+        return True
+    return False
 
 # Build accounts from env vars (GMAIL_USER_1, GMAIL_PASS_1, etc.)
 ACCOUNTS = []
