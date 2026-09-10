@@ -239,18 +239,18 @@ def main():
         print("[!] Scan completed with errors — no Telegram notification (per user preference).")
         return all_flagged
     if all_flagged:
-        lines = [f"⚠️ <b>PHISHING DETECTED</b>", f"📊 Total flagged: {len(all_flagged)}", f"👤 Accounts scanned: {len(ACCOUNTS)}", ""]
+        lines = [f"⚠️ PHISHING DETECTED", f"Total flagged: {len(all_flagged)}", f"Accounts scanned: {len(ACCOUNTS)}", ""]
         for i, m in enumerate(sorted(all_flagged, key=lambda x: x['score'], reverse=True)[:5], 1):
-            lines.append(f"<b>#{i}</b> [{m['score']}⚠]")
-            lines.append(f"📧 From: {m['from']}")
-            lines.append(f"📝 Subject: {m['subject'][:60]}")
+            lines.append(f"#{i} [{m['score']}⚠]")
+            lines.append(f"From: {m['from']}")
+            lines.append(f"Subject: {m['subject'][:60]}")
             if m['indicators']:
-                lines.append(f"🔍 Indicators: {', '.join(m['indicators'][:3])}")
+                lines.append(f"Indicators: {', '.join(m['indicators'][:3])}")
             lines.append("")
-        lines.append("🔒 Automatically moved to Spam.")
+        lines.append("Automatically moved to Spam.")
         tg_send("\n".join(lines))
     else:
-        tg_send("✅ Gmail scan clean — 0 phishing detected.")
+        tg_send("Gmail scan clean - 0 phishing detected.")
     return all_flagged
 
 if __name__ == '__main__':
