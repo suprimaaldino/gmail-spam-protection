@@ -85,6 +85,7 @@ MAX_EMAILS = 20
 SCAN_HOURS = 48
 DELAY_BETWEEN_ACCOUNTS = 2
 IMAP_TIMEOUT = 30
+THRESHOLD = 3
 
 PHISH_KEYWORDS = [
     r'\b(verify|verification|confirm|confirmation|account\s*suspended|suspended\s*account)\b',
@@ -119,6 +120,9 @@ BRAND_DOMAINS = {
     'dana': ['dana.id'], 'ovo': ['ovo.id'],
     'gopay': ['gopay.com'], 'shopeepay': ['shopeepay.com'],
 }
+BRAND_SPOOF_SCORE = 3
+SPOOF_SCORE = 3
+NO_SUBJECT_SCORE = 1
 
 def suspicious_url(text):
     urls = re.findall(r'https?://[^\s<>"\']+', text)
@@ -163,15 +167,15 @@ def check_phishing(msg):
             for brand, legit_domains in BRAND_DOMAINS.items():
                 if brand in display_name:
                     if brand not in email_addr and not any(ld in email_addr for ld in legit_domains):
-                        score += 3
+                        score += BRAND_SPOOF_SCORE
                         indicators.append(f'brand-spoof:{brand} in display, not in {email_addr}')
     domain = sender.split('@')[-1].split('>')[0].strip().lower()
     if domain and not domain.endswith(('.com', '.co.id', '.org', '.net', '.go.id', '.ac.id')):
         if not re.match(r'^[a-z0-9.-]+\.[a-z]{2,}$', domain):
-            score += 1
+            score += SPOOF_SCORE
             indicators.append(f'suspicious-domain:{domain}')
     if not subject.strip():
-        score += 1
+        score += NO_SUBJECT_SCORE
         indicators.append('no-subject')
     if content_type == 'text/html' and not body_text:
         score += 0.5
@@ -248,7 +252,7 @@ def scan_account(user, app_pass):
         score, indicators = check_phishing(msg)
         msg['score'] = score
         msg['indicators'] = indicators
-        if score >= 3: flagged.append(msg)
+        if score >= THRESHOLD: flagged.append(msg)
     print(f"  Flagged: {len(flagged)}/{len(messages)}")
     if flagged:
         for m in sorted(flagged, key=lambda x: x['score'], reverse=True):
