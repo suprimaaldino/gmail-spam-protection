@@ -4,7 +4,6 @@ WORKDIR /app
 
 COPY hermes_phish_detect.py .
 
-ENV GMAIL_USER_1=aldinoaja@gmail.com
-ENV GMAIL_USER_2=suprimaaldino@gmail.com
+ENV PYTHONUNBUFFERED=1
 
 CMD ["python", "hermes_phish_detect.py"]

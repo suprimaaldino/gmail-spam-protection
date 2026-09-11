@@ -4,10 +4,10 @@ import imaplib, email, re, sys, time, os, urllib.request, json
 from datetime import datetime, timezone, timedelta
 from urllib.parse import urlparse
 
-# Telegram notification (optional) — SUCCESS ONLY, no fail notifications
+# Telegram notification (optional) — from env vars only
 TG_BOT_TOKEN = os.environ.get("TG_BOT_TOKEN", "")
-TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "5100924103")
-TG_RUN_ON_COMMAND = os.environ.get("TG_RUN_ON_COMMAND", "1") == "1"  # allow /scan via Telegram
+TG_CHAT_ID = os.environ.get("TG_CHAT_ID", "")
+TG_RUN_ON_COMMAND = os.environ.get("TG_RUN_ON_COMMAND", "1") == "1"
 
 def tg_send(text, chat_id=None):
     if not TG_BOT_TOKEN: return
@@ -64,7 +64,12 @@ def handle_telegram_command(command, chat_id):
         return True
     return False
 
-# Build accounts from env vars (GMAIL_USER_1, GMAIL_PASS_1, etc.)
+# SECURITY: Credentials ONLY from environment variables - NO CLI args
+# Set these in GitHub Secrets / Railway Environment Variables:
+#   GMAIL_USER_1, GMAIL_PASS_1
+#   GMAIL_USER_2, GMAIL_PASS_2
+#   etc.
+
 ACCOUNTS = []
 i = 1
 while True:
@@ -74,12 +79,10 @@ while True:
     ACCOUNTS.append({"user": user, "pass": pwd})
     i += 1
 
-# Fallback to argv if env not set
 if not ACCOUNTS:
-    ACCOUNTS.append({
-        "user": sys.argv[1] if len(sys.argv) > 1 else "aldinoaja@gmail.com",
-        "pass": sys.argv[2] if len(sys.argv) > 2 else "",
-    })
+    print("[!] ERROR: No accounts configured!")
+    print("[!] Set environment variables: GMAIL_USER_1, GMAIL_PASS_1")
+    sys.exit(1)
 
 MAX_EMAILS = 20
 SCAN_HOURS = 48
