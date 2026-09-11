@@ -80,9 +80,8 @@ while True:
     i += 1
 
 if not ACCOUNTS:
-    print("[!] ERROR: No accounts configured!")
+    print("[!] WARNING: No accounts configured!")
     print("[!] Set environment variables: GMAIL_USER_1, GMAIL_PASS_1")
-    sys.exit(1)
 
 MAX_EMAILS = 20
 SCAN_HOURS = 48
@@ -308,4 +307,23 @@ def main():
 
 if __name__ == '__main__':
     import email.header
-    main()
+    if TG_RUN_ON_COMMAND and TG_BOT_TOKEN and TG_CHAT_ID:
+        print(f"[*] Bot started. Listening for /scan command...")
+        tg_send("✅ Bot online. Send /scan to trigger scan.")
+        offset = 0
+        while True:
+            try:
+                updates = tg_get_updates(offset)
+                for update in updates:
+                    offset = update["update_id"] + 1
+                    msg = update.get("message", {})
+                    chat_id = str(msg.get("chat", {}).get("id", ""))
+                    text = msg.get("text", "")
+                    if text == "/scan" and chat_id == TG_CHAT_ID:
+                        print(f"[*] /scan received from {chat_id}")
+                        handle_telegram_command("scan", chat_id)
+            except Exception as e:
+                print(f"[!] Poll error: {e}")
+                time.sleep(5)
+    else:
+        main()
